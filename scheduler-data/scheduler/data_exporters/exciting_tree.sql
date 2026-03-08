@@ -1,7 +1,5 @@
 -- Docs: https://docs.mage.ai/guides/sql-blocks
 
-CREATE SCHEMA IF NOT EXISTS analytics_gold;
-
 -- fct_trips - PARTITION BY RANGE (pickup_date)
 DROP TABLE IF EXISTS analytics_gold.fct_trips CASCADE;
 
@@ -77,48 +75,3 @@ CREATE TABLE analytics_gold.fct_trips_2025_09 PARTITION OF analytics_gold.fct_tr
 CREATE TABLE analytics_gold.fct_trips_2025_10 PARTITION OF analytics_gold.fct_trips FOR VALUES FROM ('2025-10-01') TO ('2025-11-01');
 CREATE TABLE analytics_gold.fct_trips_2025_11 PARTITION OF analytics_gold.fct_trips FOR VALUES FROM ('2025-11-01') TO ('2025-12-01');
 CREATE TABLE analytics_gold.fct_trips_2025_12 PARTITION OF analytics_gold.fct_trips FOR VALUES FROM ('2025-12-01') TO ('2026-01-01');
-
-
--- dim_payment_type - PARITION BY LIST (payment_type)
-DROP TABLE IF EXISTS analytics_gold.dim_zone CASCADE;
-
-CREATE TABLE analytics_gold.dim_zone (
-    zone_key INT,
-    borough VARCHAR(50),
-    zone_name VARCHAR(100),
-    service_zone VARCHAR(50)
-) PARTITION BY HASH (zone_key);
-
--- Create exactly 4 partitions 
-CREATE TABLE analytics_gold.dim_zone_p0 PARTITION OF analytics_gold.dim_zone FOR VALUES WITH (MODULUS 4, REMAINDER 0);
-CREATE TABLE analytics_gold.dim_zone_p1 PARTITION OF analytics_gold.dim_zone FOR VALUES WITH (MODULUS 4, REMAINDER 1);
-CREATE TABLE analytics_gold.dim_zone_p2 PARTITION OF analytics_gold.dim_zone FOR VALUES WITH (MODULUS 4, REMAINDER 2);
-CREATE TABLE analytics_gold.dim_zone_p3 PARTITION OF analytics_gold.dim_zone FOR VALUES WITH (MODULUS 4, REMAINDER 3);
-
--- dim_service_type - PARITION BY LIST (service_name)
-DROP TABLE IF EXISTS analytics_gold.dim_service_type CASCADE;
-
-CREATE TABLE analytics_gold.dim_service_type (
-    service_type_key INT,
-    service_name TEXT,
-    service_description TEXT
-) PARTITION BY LIST (service_name);
-
-CREATE TABLE analytics_gold.dim_service_yellow PARTITION OF analytics_gold.dim_service_type FOR VALUES IN ('yellow');
-CREATE TABLE analytics_gold.dim_service_green PARTITION OF analytics_gold.dim_service_type FOR VALUES IN ('green');
-
--- dim_zone - PARTITION BY HASH (zone_key)
-DROP TABLE IF EXISTS analytics_gold.dim_payment_type CASCADE;
-
-CREATE TABLE analytics_gold.dim_payment_type (
-    payment_type_key INT,
-    payment_type_name VARCHAR(15)
-) PARTITION BY LIST (payment_type_key);
-
-CREATE TABLE analytics_gold.dim_payment_flex PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (0);
-CREATE TABLE analytics_gold.dim_payment_card PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (1);
-CREATE TABLE analytics_gold.dim_payment_cash PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (2);
-CREATE TABLE analytics_gold.dim_payment_nocharge PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (3);
-CREATE TABLE analytics_gold.dim_payment_dispute PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (4);
-CREATE TABLE analytics_gold.dim_payment_unknown PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (5);
-CREATE TABLE analytics_gold.dim_payment_voided PARTITION OF analytics_gold.dim_payment_type FOR VALUES IN (6);

@@ -58,7 +58,7 @@ models:
   - name: dim_service_type
     description: "Dimension for service types (yellow/green), partitioned by LIST"
     columns:
-      - name: service_type
+      - name: service_name
         description: "The type of taxi service"
         tests:
           - accepted_values:
@@ -67,9 +67,8 @@ models:
   - name: dim_payment_type
     description: "Dimension for payment types, partitioned by LIST"
     columns:
-      - name: payment_type
+      - name: payment_type_key
         description: "How the trip was paid for"
         tests:
           - accepted_values:
-              # Document this domain in your README as required by the rubric
-              values: ['cash', 'card', 'other', 'unknown']
+              values: [0, 1, 2, 3, 4, 5, 6]

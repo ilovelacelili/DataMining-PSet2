@@ -40,4 +40,5 @@ from trips
 where
     trips.pickup_location_id is not null and trips.dropoff_location_id is not null
     and COALESCE(t_pickup_ts, l_pickup_ts) <= COALESCE(t_dropoff_ts, l_dropoff_ts)
-    and trip_distance >= 0 and total_amount >= 0
+    and trip_distance >= 0 and total_amount >= 0 
+    and TO_CHAR(COALESCE(trips.t_pickup_ts, l_pickup_ts), 'YYYY-MM') = source_month

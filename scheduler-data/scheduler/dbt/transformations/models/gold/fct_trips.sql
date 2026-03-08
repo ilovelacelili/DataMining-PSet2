@@ -8,30 +8,38 @@ WITH silver_trips AS (
 )
 
 SELECT 
-    -- 1. Generate a unique trip key
-    md5(pickup_ts::text || pu_zone_key::text || do_zone_key::text || service_type) AS trip_key,
+    -- Unique trip key
+    md5(pickup_ts::text || pickup_location_id::text || dropoff_location_id::text || service_type) AS trip_key,
     
-    -- 2. Zone Keys
-    pu_zone_key,
-    do_zone_key,
-    
-    -- 3. The Partition Key (RANGE)
+    -- Partition Key (by RANGE)
     DATE(pickup_ts) AS pickup_date_key,
+
+    -- Zone Keys
+    pickup_location_id as pu_zone_key,
+    dropoff_location_id as do_zone_key,
+    pickup_ts,
+    dropoff_ts,
     
-    -- 4. Categorical data
-    service_type,
-    payment_type,
+    -- Categorical data
+    CASE 
+        WHEN service_type = 'yellow' THEN 1
+        WHEN service_type = 'green' THEN 2 
+    END as service_type_key,
+
+    COALESCE(payment_type_id, 5) as payment_type_key, -- 5 means Unknown in the Docs
     
-    -- 5. Metrics
+    -- Metrics
     fare_amount,
     tip_amount,
     total_amount,
-    trip_distance
+    trip_distance,
 
-FROM silver_trips
+    -- Metadata
+    ingest_ts, 
+    source_month
 
--- Optional but recommended: Only process new data on future pipeline runs
+FROM silver_trips 
+-- Only process new data on future pipeline runs
 {% if is_incremental() %}
-    -- Assuming your silver view exposes the ingest_ts
-    WHERE ingest_ts > (SELECT MAX(ingest_ts) FROM {{ this }})
+    WHERE ingest_ts > (SELECT COALESCE(MAX(ingest_ts), '1900-01-01'::TIMESTAMP) FROM {{ this }})
 {% endif %}
