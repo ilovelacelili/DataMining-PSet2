@@ -9,13 +9,15 @@
 
 
 # Checklist de aceptación (copiar en el README y marcar)
-- [x] Cargados todos los meses 2015–2025 (Parquet) de Yellow y Green; matriz de
-cobertura en README. 
-- [x] Mage orquesta backfill mensual con idempotencia y metadatos por lote.
-- [x] Bronze (raw) refleja fielmente el origen; Silver unifica/escaliza; Gold en estrella con
-fct_trips y dimensiones clave.
-- [x] Clustering aplicado a fct_trips con evidencia antes/después (Query Profile,
-pruning)
-- [x] Secrets y cuenta de servicio con permisos mínimos (evidencias sin exponer valores).
-- [x] Tests dbt (not_null, unique accepted_values, relationships) pasan; docs y lineage generados.
-- [x] Notebook con respuestas a las 5 preguntas de negocio desde gold.
+
+- [x] Docker Compose levanta Postgres + Mage
+- [x] Credenciales en Mage Secrets y .env (solo .env.example en repo)
+- [x] Pipeline ingest_bronze mensual e idempotente + tabla de cobertura
+- [x] dbt corre dentro de Mage: dbt_build_silver, dbt_build_gold, quality_checks
+- [x] Silver materialized = views; Gold materialized = tables
+- [x] Gold tiene esquema estrella completo
+- [x] Particionamiento: RANGE en fct_trips, HASH en dim_zone, LIST en dim_service_type y dim_payment_type
+- [x] README incluye \d+ y EXPLAIN (ANALYZE, BUFFERS) con pruning
+- [x] dbt test pasa desde Mage
+- [x] Notebook responde 20 preguntas usando solo gold.*
+- [x] Triggers configurados y evidenciados
