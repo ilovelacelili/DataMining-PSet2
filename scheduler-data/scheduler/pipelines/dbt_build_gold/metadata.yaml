@@ -1,0 +1,193 @@
+blocks:
+- all_upstream_blocks_executed: true
+  color: null
+  configuration:
+    data_provider: postgres
+    data_provider_profile: default
+    dbt: {}
+    disable_query_preprocessing: false
+    export_write_policy: append
+    limit: 1000
+    use_raw_sql: true
+  downstream_blocks:
+  - dbt/transformations/models/gold/dim_zone
+  - dbt/transformations/models/gold/dim_service_type
+  - dbt/transformations/models/gold/dim_payment_type
+  - dbt/transformations/models/gold/dim_date
+  - dbt/transformations/models/gold/dim_vendor
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: create_table_partitions
+  retry_config: null
+  status: executed
+  timeout: null
+  type: data_exporter
+  upstream_blocks: []
+  uuid: create_table_partitions
+- all_upstream_blocks_executed: true
+  color: null
+  configuration:
+    dbt_project_name: dbt/transformations
+    file_path: dbt/transformations/models/gold/dim_zone.sql
+    file_source:
+      path: dbt/transformations/models/gold/dim_zone.sql
+      project_path: dbt/transformations
+    limit: 1000
+  downstream_blocks:
+  - dbt/transformations/models/gold/fct_trips
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: dbt/transformations/models/gold/dim_zone
+  retry_config: null
+  status: updated
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - create_table_partitions
+  uuid: dbt/transformations/models/gold/dim_zone
+- all_upstream_blocks_executed: true
+  color: null
+  configuration:
+    dbt_project_name: dbt/transformations
+    file_path: dbt/transformations/models/gold/dim_service_type.sql
+    file_source:
+      path: dbt/transformations/models/gold/dim_service_type.sql
+      project_path: dbt/transformations
+    limit: 1000
+  downstream_blocks:
+  - dbt/transformations/models/gold/fct_trips
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: dbt/transformations/models/gold/dim_service_type
+  retry_config: null
+  status: updated
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - create_table_partitions
+  uuid: dbt/transformations/models/gold/dim_service_type
+- all_upstream_blocks_executed: true
+  color: null
+  configuration:
+    dbt_project_name: dbt/transformations
+    file_path: dbt/transformations/models/gold/dim_payment_type.sql
+    file_source:
+      path: dbt/transformations/models/gold/dim_payment_type.sql
+      project_path: dbt/transformations
+    limit: 1000
+  downstream_blocks:
+  - dbt/transformations/models/gold/fct_trips
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: dbt/transformations/models/gold/dim_payment_type
+  retry_config: null
+  status: updated
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - create_table_partitions
+  uuid: dbt/transformations/models/gold/dim_payment_type
+- all_upstream_blocks_executed: true
+  color: null
+  configuration:
+    dbt_project_name: dbt/transformations
+    file_path: dbt/transformations/models/gold/dim_date.sql
+    file_source:
+      path: dbt/transformations/models/gold/dim_date.sql
+      project_path: dbt/transformations
+    limit: 1000
+  downstream_blocks:
+  - dbt/transformations/models/gold/fct_trips
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: dbt/transformations/models/gold/dim_date
+  retry_config: null
+  status: executed
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - create_table_partitions
+  uuid: dbt/transformations/models/gold/dim_date
+- all_upstream_blocks_executed: true
+  color: null
+  configuration:
+    dbt_project_name: dbt/transformations
+    file_path: dbt/transformations/models/gold/dim_vendor.sql
+    file_source:
+      path: dbt/transformations/models/gold/dim_vendor.sql
+      project_path: dbt/transformations
+    limit: 1000
+  downstream_blocks:
+  - dbt/transformations/models/gold/fct_trips
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: dbt/transformations/models/gold/dim_vendor
+  retry_config: null
+  status: executed
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - create_table_partitions
+  uuid: dbt/transformations/models/gold/dim_vendor
+- all_upstream_blocks_executed: false
+  color: null
+  configuration:
+    dbt_project_name: dbt/transformations
+    file_path: dbt/transformations/models/gold/fct_trips.sql
+    file_source:
+      path: dbt/transformations/models/gold/fct_trips.sql
+      project_path: dbt/transformations
+    limit: 1000
+  downstream_blocks: []
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: sql
+  name: dbt/transformations/models/gold/fct_trips
+  retry_config: null
+  status: updated
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - dbt/transformations/models/gold/dim_zone
+  - dbt/transformations/models/gold/dim_service_type
+  - dbt/transformations/models/gold/dim_payment_type
+  - dbt/transformations/models/gold/dim_date
+  - dbt/transformations/models/gold/dim_vendor
+  uuid: dbt/transformations/models/gold/fct_trips
+cache_block_output_in_memory: false
+callbacks: []
+concurrency_config: {}
+conditionals: []
+created_at: '2026-03-04 04:25:47.788032+00:00'
+data_integration: null
+description: Builds the Gold stage from the Silver Stage using DBT
+executor_config: {}
+executor_count: 1
+executor_type: null
+extensions: {}
+name: dbt_build_gold
+notification_config: {}
+remote_variables_dir: null
+retry_config: {}
+run_pipeline_in_one_process: false
+settings:
+  triggers: null
+spark_config: {}
+tags: []
+type: python
+uuid: dbt_build_gold
+variables_dir: /home/src/mage_data/scheduler
+widgets: []

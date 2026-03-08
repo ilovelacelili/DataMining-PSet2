@@ -1,0 +1,75 @@
+version: 2
+
+models:
+  # ---------------------------------------------------------
+  # FACT TABLE
+  # ---------------------------------------------------------
+  - name: fct_trips
+    description: "Main fact table for taxi trips, partitioned by RANGE (pickup_date_key)"
+    columns:
+      - name: trip_key
+        description: "Primary key for the trip"
+        tests:
+          - unique
+          - not_null
+      
+      - name: pu_zone_key
+        description: "Foreign key to dim_zone for pickup location"
+        tests:
+          - relationships:
+              to: ref('dim_zone')
+              field: zone_key
+              
+      - name: do_zone_key
+        description: "Foreign key to dim_zone for dropoff location"
+        tests:
+          - relationships:
+              to: ref('dim_zone')
+              field: zone_key
+              
+      - name: pickup_date_key
+        description: "Foreign key to dim_date for the pickup date"
+        tests:
+          - relationships:
+              to: ref('dim_date')
+              field: date_key
+
+  # ---------------------------------------------------------
+  # DIMENSIONS
+  # ---------------------------------------------------------
+  - name: dim_zone
+    description: "Dimension for taxi zones, partitioned by HASH (zone_key)"
+    columns:
+      - name: zone_key
+        description: "Primary key for the zone"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_date
+    description: "Dimension for dates"
+    columns:
+      - name: date_key
+        description: "Primary key for the date"
+        tests:
+          - unique
+          - not_null
+
+  - name: dim_service_type
+    description: "Dimension for service types (yellow/green), partitioned by LIST"
+    columns:
+      - name: service_type
+        description: "The type of taxi service"
+        tests:
+          - accepted_values:
+              values: ['yellow', 'green']
+
+  - name: dim_payment_type
+    description: "Dimension for payment types, partitioned by LIST"
+    columns:
+      - name: payment_type
+        description: "How the trip was paid for"
+        tests:
+          - accepted_values:
+              # Document this domain in your README as required by the rubric
+              values: ['cash', 'card', 'other', 'unknown']

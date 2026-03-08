@@ -1,4 +1,4 @@
 .env
 db-ui-data/*
-scheduler-data/*
+scheduler-data/mage_data/*
 db-data/*

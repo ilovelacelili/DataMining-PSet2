@@ -1,0 +1,8 @@
+sources:
+  - name: raw
+    schema: raw
+    tables:
+      - name: raw_taxi_trips
+        description: 'This table contains the raw data from NYC Taxi Trips.'
+      - name: raw_taxi_zones
+        description: 'This table contains the raw data from the NYC Taxi Zones'

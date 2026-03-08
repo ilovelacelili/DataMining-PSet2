@@ -1,0 +1,35 @@
+version: 2
+
+models:
+    - name: int_taxi_trips_zones
+      description: 'This table contains the trips data joined with the zones information of the intermediate layer'
+      columns:
+        - name: pickup_ts
+          tests: [not_null]
+        - name: dropoff_ts
+          tests: [not_null]
+        - name: pickup_location_id
+          tests:
+            - not_null
+            - relationships:
+                to: ref('stg_taxi_zones')
+                field: location_id
+        - name: dropoff_location_id
+          tests:
+            - not_null
+            - relationships:
+                to: ref('stg_taxi_zones')
+                field: location_id
+        - name: service_type
+          tests:
+            - not_null
+            - accepted_values:
+                values: ['yellow', 'green']
+        - name: trip_distance
+          tests:
+            - dbt_utils.expression_is_true:
+                expression: '>=0'
+        - name: total_amount
+          tests:
+            - dbt_utils.expression_is_true:
+                expression: '>=0'

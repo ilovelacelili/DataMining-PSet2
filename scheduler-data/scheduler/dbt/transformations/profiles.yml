@@ -1,0 +1,12 @@
+transformations:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ mage_secret_var('pg_host') }}"
+      user: "{{ mage_secret_var('pg_user') }}"
+      password: "{{ mage_secret_var('pg_password') }}" 
+      port: {{ mage_secret_var('pg_port') }}
+      dbname: "{{ mage_secret_var('pg_dbname') }}"
+      threads: 4
+      schema: analytics
