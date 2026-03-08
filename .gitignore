@@ -1,2 +1,4 @@
 .env
-db-ui-data/
+db-ui-data/*
+scheduler-data/*
+db-data/*
