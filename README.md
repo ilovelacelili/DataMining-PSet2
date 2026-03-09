@@ -178,9 +178,15 @@ Para este caso se utilizó 2 tipos distintos de triggers:
 
 1. `ingest_monthly` (Schedule): se ejecuta los domingos a las 2 AM y dispara el pipeline `ingest_bronze` para intentar ingestar el último mes faltante. Se encuentra configurado para tomar el mes actual de ejecución del trigger como mes de ingesta.
 
+![Ingest_monthly](evidence/bronze_triggers.png)
+
 2. `dbt_after_ingest` (Trigger Pipeline): se activa automáticamente como bloque al final de `ingest_bronze` cuando este pipeline finaliza con éxito. Dispara en cadena el pipeline `dbt_build_silver`. Importante mencionar que este último se ejecuta como parte del modelo dbt de cada uno de los bloques a forma de `schema.yml`.
 
-3. `dbt_after_silver` (Trigger Pipeline): al igual que el trigger anterior, este trigger funciona como un bloque dentro del pipeline `dbt_build_silver` que dispara al final de su ejecución el pipeline de `dbt_build_gold` automáticamente a penas termine correctamente su ejecución.
+![Ingest_monthly](evidence/trigger_after_ingest.png)
+
+3. `dbt_trigger_gold` (Trigger Pipeline): al igual que el trigger anterior, este trigger funciona como un bloque dentro del pipeline `dbt_build_silver` que dispara al final de su ejecución el pipeline de `dbt_build_gold` automáticamente a penas termine correctamente su ejecución.
+
+![Ingest_monthly](evidence/trigger_gold.png)
 
 ### Gestión de secretos
 
