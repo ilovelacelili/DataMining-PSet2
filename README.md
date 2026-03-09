@@ -162,21 +162,25 @@ MAGEAI_PORT={{MAGEAI_PORT}}
 
 Existen esencialmente 2 flujos de datos en los pipelines de MageAI:
 
-El primer flujo es para la ingesta de datos históricos, la cuál empieza y termina con el pipeline de `backfill` y el de `ingest_zones`, ya que se utilizaron para hacer backfills de único uso para datos históricos desde Enero-2022 hasta Diciembre-2025, y se guardan en una capa **raw** a parte de la estructura de medallones. Estos pipelines se encargan de descargar los archivos `.parquet` desde la página oficial y guardarlos tal cual fueron descargados en una tabla sin ninguna estructura explícita. Además, se incluía en las tablas los metadaos de `ingest_ts` y `source_month`.
+El primer flujo es para la ingesta de datos históricos, la cuál empieza y termina con el pipeline de `backfill` el cual utiliza el mismo `ingest_bronze` con triggers definidos en base a distintas fechas de ejecución y el de `ingest_zones`, ya que se utilizaron para hacer backfills de único uso para datos históricos desde Enero-2022 hasta Diciembre-2025, y se guardan en una capa **raw** a parte de la estructura de medallones. Estos pipelines se encargan de descargar los archivos `.parquet` desde la página oficial y guardarlos tal cual fueron descargados en una tabla sin ninguna estructura explícita. Además, se incluía en las tablas los metadaos de `ingest_ts` y `source_month`.
 
 El segundo flujo, en este caso el más importante, consta de 3 pipelines distinguidas:
 
-- `ingest_bronze`: este pipeline revisa el último mes guardado en la capa **raw** y verifica si el mes siguiente a ese ya se encuentra disponible. Una vez verificado, haya sigo exitoso o no, procede a tipificar y seleccionar los campos que nos interesa desde la capa raw, y los renombra a conveniencia del proyecto. Finalmente, crea 2 vistas en un schema `analytics_bronze` de naturaleza **raw** y dispara una solicitud API para continuar con el siguiente pipeline.
+- `ingest_bronze`: este pipeline revisa el mes y año de la ejecución del pipeline y verifica si ese mes ya se encuentra disponible para ingesta. Una vez verificado, haya sigo exitoso o no, procede a tipificar y seleccionar los campos que nos interesa desde la capa raw, y los renombra a conveniencia del proyecto. Finalmente, crea 2 vistas en un schema `analytics_bronze` de naturaleza **raw** y dispara al final un trigger pipeline para continuar con el siguiente pipeline.
 
-- `dbt_build_silver`: se ejecuta automáticamente cuando la tubería anterior finaliza sin ningún problema. Esta tubería se encarga de materializar en forma de vista una tabla con la información de los viajes de los taxis enriquecida con la información de las zonas de NYC. Así mismo, se encarga de filtrar información nula o inconsistente al momento de realizar la selección (montos negativos o fechas incorrectas por ejemplo) y verifica utilizando tests. Finalmente, al igual que el caso anterior, dispara una API para continuar con el siguiente pipeline.
+- `dbt_build_silver`: se ejecuta automáticamente cuando la tubería anterior finaliza sin ningún problema. Esta tubería se encarga de materializar en forma de vista una tabla con la información de los viajes de los taxis enriquecida con la información de las zonas de NYC. Así mismo, se encarga de filtrar información nula o inconsistente al momento de realizar la selección (montos negativos o fechas incorrectas por ejemplo) y verifica utilizando tests. Finalmente, al igual que el caso anterior, dispara un trigger pipeline después de los tests para continuar con el siguiente pipeline.
 
-- `dbt_build_gold`: crea físicamente el esquema de estrella, con los viajes como hechos principales, y las zonas, fechas, vendedores, tipos de servicio y tipos de pago como dimensiones. Lo primero que hace es materializar las tablas y sus particiones con DDL crudo. Posteriormente, selecciona los datos necesarios para las preguntas de negocios utilizando el modo incremental para no modificar las particiones anteriores. Finalmente, realiza una serie de pruebas de calidad para verificar la integridad de los datos y acaba.
+- `dbt_build_gold`: crea físicamente el esquema de estrella, con los viajes como hechos principales, y las zonas, fechas, vendedores, tipos de servicio y tipos de pago como dimensiones. Lo primero que hace es materializar las tablas y sus particiones con DDL crudo. Posteriormente, selecciona los datos necesarios para las preguntas de negocios utilizando el modo incremental para no modificar las particiones anteriores. Finalmente, realiza una serie de pruebas de calidad para verificar la integridad de los datos y finaliza totalmente.
 
 ### Detalles de los Triggers de MageAI
 
-1. `ingest_monthly` (Schedule): se ejecuta los domingos a las 2 AM y dispara el pipeline `ingest_bronze` para intentar ingestar el último mes faltante.
+Para este caso se utilizó 2 tipos distintos de triggers:
 
-2. `dbt_after_ingest` (Event/API): se activa automáticamente cuando el pipeline `ingest_bronze` finaliza con éxito. Dispara en cadena los pipelines `dbt_build_silver`, `dbt_build_gold` y los `quality_checks`. Importante mencionar que este último se ejecuta como parte del modelo dbt de cada uno de los bloques a forma de `schema.yml`.
+1. `ingest_monthly` (Schedule): se ejecuta los domingos a las 2 AM y dispara el pipeline `ingest_bronze` para intentar ingestar el último mes faltante. Se encuentra configurado para tomar el mes actual de ejecución del trigger como mes de ingesta.
+
+2. `dbt_after_ingest` (Trigger Pipeline): se activa automáticamente como bloque al final de `ingest_bronze` cuando este pipeline finaliza con éxito. Dispara en cadena el pipeline `dbt_build_silver`. Importante mencionar que este último se ejecuta como parte del modelo dbt de cada uno de los bloques a forma de `schema.yml`.
+
+3. `dbt_after_silver` (Trigger Pipeline): al igual que el trigger anterior, este trigger funciona como un bloque dentro del pipeline `dbt_build_silver` que dispara al final de su ejecución el pipeline de `dbt_build_gold` automáticamente a penas termine correctamente su ejecución.
 
 ### Gestión de secretos
 
@@ -196,11 +200,72 @@ Siguiendo buenas prácticas de seguridad, ninguna credencial importante se encue
 
 ### Particionamiento en PostgreSQL
 
+Con objetivo de optimizar el rendimiento analítico, la capa Gold implementa particionamiento declarativo nativo:
+
+- `fct_trips`: particionamiento por `RANGE(pickup_date_key)` de forma mensual.
+- `dim_zone`: particionamiento por `HASH(zone_key)` para 4 particiones.
+- `dim_service_type`: particionamiento por `LIST(service_name)` para ('yellow','green').
+- `dim_payment_type`: particionamiento por `LIST(payment_type_key)` para los keys (0, 1, 2, 3, 4, 5, 6), donde 0 = Flex Fair, 1 = Cash, 2 = Credit Card, 3 = No charge, 4 = Dispute, 5 = Unknown y 6 = Voided Trip.
+
+#### Evidencias de particionamiento (`\d+`)
+
+- fct_trips
+
+![\d+ fct_trips](evidence/dFact.png)
+
+- dim_zone
+
+![\d+ fct_trips](evidence/dZone.png)
+
+- dim_payment_type
+
+![\d+ fct_trips](evidence/dPayment.png)
+
+- dim_service_type
+
+![\d+ fct_trips](evidence/dService.png)
+
+### Evidencias del Partition Pruning
+
+- fct_trips por `pickup_date_key`
+
+![EXPLAIN fct_trips](evidence/PruningDate.png)
+
+- dim_zone por `zone_key`
+
+![EXPLAIN fct_trips](evidence/PruningZone.png)
+
+En ambos casos, nos dirigimos a observar la línea que empieza por **Seq Scan...**, donde se puede observar como el motor de PostgreSQL realiza el pruning de las particiones que no compete a la query actual y busca directamente en la tabla particionada donde sabe que encontrará la información solicitada.
+
+### Transformaciones DBT
+
+En cada pipeline `dbt`, se ejecutan comandos de `dbt run` y `dbt test`, tal que permita materializar las tablas (vistas en caso de silver) y se ejecuten las pruebas de calidad mínimas para cada uno de los casos.
+
 ### Respuestas a preguntas de negocios
 
 Se incluye el archivo `data_analysis.ipynb` con las queries utilizadas para la capa gold con las respuestas y breves explicaciones a las preguntas de negocio solicitadas.
 
 ### Troubleshooting
+
+Durante el desarrollo se identificaron y solucionaron los siguientes problemas:
+
+1. Error de caída de partición en dbt:
+
+**Problema:** dbt intentaba ejecutar ALTER TABLE DROP COLUMN en las columnas usadas como llaves de partición, provocando un error fatal en PostgreSQL.
+
+**Solución:** Se identificó que esto ocurría por un desajuste sutil de tipos de datos. Se ajustó el modelo dbt forzando un casting explícito (ej. ::VARCHAR(10)) para que coincidiera exactamente con el DDL de la tabla física, evitando que dbt intentara recrear la columna.
+
+2. El "Empty Table NULL Trap" en modelos incrementales:
+
+**Problema:** La inserción incremental arrojaba 0 registros porque la comparación MAX(ingest_ts) evaluaba a NULL en una tabla vacía.
+
+**Solución:** Se incorporó la función COALESCE(MAX(ingest_ts), '1900-01-01') en la condición WHERE del modelo dbt para proveer una fecha por defecto en la primera carga.
+
+3. Data Leakage con las fechas de los archivos Parquet:
+
+**Problema:** Un constraint tipo CHECK en la tabla de hechos Gold fallaba porque los archivos fuente mensuales a menudo traían registros "rezagados" del mes anterior, rompiendo la partición lógica.
+
+**Solución:** Se implementó una regla de calidad en la vista Silver (WHERE TO_CHAR(pickup_ts, 'YYYY-MM') = source_month) para poner en cuarentena los registros anómalos antes de que llegaran a la capa Gold.
 
 ### Checklist de aceptación
 

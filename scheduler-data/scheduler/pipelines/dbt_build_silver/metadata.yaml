@@ -2,24 +2,73 @@ blocks:
 - all_upstream_blocks_executed: true
   color: null
   configuration:
+    dbt:
+      command: run
+    dbt_profile_target: ''
     dbt_project_name: dbt/transformations
-    file_path: dbt/transformations/models/silver/int_taxi_trips_zones.sql
+    disable_query_preprocessing: false
+    export_write_policy: append
     file_source:
-      path: dbt/transformations/models/silver/int_taxi_trips_zones.sql
-      project_path: dbt/transformations
-    limit: 1000
+      path: dbts/dbt_run_silver.yaml
+    use_raw_sql: false
+  downstream_blocks:
+  - curated_checks
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: yaml
+  name: dbt_run_silver
+  retry_config: null
+  status: updated
+  timeout: null
+  type: dbt
+  upstream_blocks: []
+  uuid: dbt_run_silver
+- all_upstream_blocks_executed: false
+  color: null
+  configuration:
+    dbt:
+      command: test
+    dbt_profile_target: ''
+    dbt_project_name: dbt/transformations
+    disable_query_preprocessing: false
+    export_write_policy: append
+    file_source:
+      path: dbts/curated_checks.yaml
+    use_raw_sql: false
+  downstream_blocks:
+  - dbt_trigger_gold
+  executor_config: null
+  executor_type: local_python
+  has_callback: false
+  language: yaml
+  name: curated_checks
+  retry_config: null
+  status: updated
+  timeout: null
+  type: dbt
+  upstream_blocks:
+  - dbt_run_silver
+  uuid: curated_checks
+- all_upstream_blocks_executed: false
+  color: null
+  configuration:
+    file_path: data_loaders/dbt_trigger_gold.py
+    file_source:
+      path: data_loaders/dbt_trigger_gold.py
   downstream_blocks: []
   executor_config: null
   executor_type: local_python
   has_callback: false
-  language: sql
-  name: dbt/transformations/models/silver/int_taxi_trips_zones
+  language: python
+  name: dbt_trigger_gold
   retry_config: null
-  status: executed
+  status: updated
   timeout: null
-  type: dbt
-  upstream_blocks: []
-  uuid: dbt/transformations/models/silver/int_taxi_trips_zones
+  type: data_loader
+  upstream_blocks:
+  - curated_checks
+  uuid: dbt_trigger_gold
 cache_block_output_in_memory: false
 callbacks: []
 concurrency_config: {}

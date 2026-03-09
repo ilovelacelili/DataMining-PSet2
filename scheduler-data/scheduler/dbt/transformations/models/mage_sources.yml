@@ -11,4 +11,25 @@ sources:
       block_uuid: create_table_partitions
       pipeline_uuid: dbt_build_gold
     name: dbt_build_gold_create_table_partitions
+  - description: Dataframe for block `export_taxi_data` of the `backfill_taxi_trips`
+      mage pipeline.
+    identifier: mage_backfill_taxi_trips_export_taxi_data
+    meta:
+      block_uuid: export_taxi_data
+      pipeline_uuid: backfill_taxi_trips
+    name: backfill_taxi_trips_export_taxi_data
+  - description: Dataframe for block `export_taxi_data` of the `ingest_bronze` mage
+      pipeline.
+    identifier: mage_ingest_bronze_export_taxi_data
+    meta:
+      block_uuid: export_taxi_data
+      pipeline_uuid: ingest_bronze
+    name: ingest_bronze_export_taxi_data
+  - description: Dataframe for block `dbt_trigger_gold` of the `dbt_build_silver`
+      mage pipeline.
+    identifier: mage_dbt_build_silver_dbt_trigger_gold
+    meta:
+      block_uuid: dbt_trigger_gold
+      pipeline_uuid: dbt_build_silver
+    name: dbt_build_silver_dbt_trigger_gold
 version: 2

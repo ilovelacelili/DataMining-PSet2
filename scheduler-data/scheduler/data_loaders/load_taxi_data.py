@@ -19,7 +19,7 @@ def load_data(*args, **kwargs):
     logger = kwargs.get('logger')
     
     # Fetch parameters backfill triggers
-    # Defaults to Yellow Taxi, January 2024 if not provided
+    # Defaults to Yellow Taxi, December 2025 if not provided
     execution_date = kwargs.get('execution_date')
     if execution_date:
         year = execution_date.year
