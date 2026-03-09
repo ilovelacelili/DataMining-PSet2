@@ -134,8 +134,75 @@ Este proyecto implementa un pipeline end-to-end automatizado con Mage AI, transf
 
 Se creó una vista a nivel de capa bronce que reporta estos números automáticamente al momento en que se actualicen las entradas en la tabla de datos de los viajes. Por lo pronto, se puede observar que aún no se encuentran disponibles los datos del mes de Diciembre de 2025 de ninguno de los dos servicios de taxis de New York.
 
+### Levantamiento de la Infraestructura
+Para la infraestructura general se utilizó Docker Compose, con los servicios de PostgreSQL como warehouse, PGAdmin como herramienta de monitoreo y MageAI como orquestador de tuberías para procesamiento de los datos.
 
-# Checklist de aceptación (copiar en el README y marcar)
+Para poder levantar el proyecto se necesita:
+
+1. Clonar el repositorio con `git clone <url_repositorio>`
+
+2. Renombar el archivo `.env.example` a `.env` y colocar las credenciales pertinentes.
+
+```text
+DB_USER={{DB_USER}}
+DB_PASSWORD={{DB_PASSWORD}}
+DB_PORT={{DB_PORT}}
+DB_NAME={{DB_NAME}}
+PGADMIN_EMAIL={{PGADMIN_EMAIL}}
+PGADMIN_PASSWORD={{PGADMIN_PASSWORD}}
+PGADMIN_PORT={{PGADMIN_PORT}}
+MAGEAI_PORT={{MAGEAI_PORT}}
+```
+
+3. Levantar los servicios utilizando `docker compose up --build`.
+
+4. Acceder la interfaz gráfica del MageAI en un buscador con el URL: `http://<ip_host>:<puerto_mageai>/` en este caso siendo `http://localhost:6789/`.
+
+### Detalles de las Pipelines en MageAI
+
+Existen esencialmente 2 flujos de datos en los pipelines de MageAI:
+
+El primer flujo es para la ingesta de datos históricos, la cuál empieza y termina con el pipeline de `backfill` y el de `ingest_zones`, ya que se utilizaron para hacer backfills de único uso para datos históricos desde Enero-2022 hasta Diciembre-2025, y se guardan en una capa **raw** a parte de la estructura de medallones. Estos pipelines se encargan de descargar los archivos `.parquet` desde la página oficial y guardarlos tal cual fueron descargados en una tabla sin ninguna estructura explícita. Además, se incluía en las tablas los metadaos de `ingest_ts` y `source_month`.
+
+El segundo flujo, en este caso el más importante, consta de 3 pipelines distinguidas:
+
+- `ingest_bronze`: este pipeline revisa el último mes guardado en la capa **raw** y verifica si el mes siguiente a ese ya se encuentra disponible. Una vez verificado, haya sigo exitoso o no, procede a tipificar y seleccionar los campos que nos interesa desde la capa raw, y los renombra a conveniencia del proyecto. Finalmente, crea 2 vistas en un schema `analytics_bronze` de naturaleza **raw** y dispara una solicitud API para continuar con el siguiente pipeline.
+
+- `dbt_build_silver`: se ejecuta automáticamente cuando la tubería anterior finaliza sin ningún problema. Esta tubería se encarga de materializar en forma de vista una tabla con la información de los viajes de los taxis enriquecida con la información de las zonas de NYC. Así mismo, se encarga de filtrar información nula o inconsistente al momento de realizar la selección (montos negativos o fechas incorrectas por ejemplo) y verifica utilizando tests. Finalmente, al igual que el caso anterior, dispara una API para continuar con el siguiente pipeline.
+
+- `dbt_build_gold`: crea físicamente el esquema de estrella, con los viajes como hechos principales, y las zonas, fechas, vendedores, tipos de servicio y tipos de pago como dimensiones. Lo primero que hace es materializar las tablas y sus particiones con DDL crudo. Posteriormente, selecciona los datos necesarios para las preguntas de negocios utilizando el modo incremental para no modificar las particiones anteriores. Finalmente, realiza una serie de pruebas de calidad para verificar la integridad de los datos y acaba.
+
+### Detalles de los Triggers de MageAI
+
+1. `ingest_monthly` (Schedule): se ejecuta los domingos a las 2 AM y dispara el pipeline `ingest_bronze` para intentar ingestar el último mes faltante.
+
+2. `dbt_after_ingest` (Event/API): se activa automáticamente cuando el pipeline `ingest_bronze` finaliza con éxito. Dispara en cadena los pipelines `dbt_build_silver`, `dbt_build_gold` y los `quality_checks`. Importante mencionar que este último se ejecuta como parte del modelo dbt de cada uno de los bloques a forma de `schema.yml`.
+
+### Gestión de secretos
+
+Siguiendo buenas prácticas de seguridad, ninguna credencial importante se encuentra directamente plasmada dentro del código. En su defecto, se encuentra dentro de un archivo `.env` para el caso del docker compose como se explicó anteriormente, o se encuentran configuradas como secretos dentro de **Mage Secrets**:
+
+```text
+- POSTGRES_USER: Usuario administrador de la base de datos destino.
+
+- POSTGRES_PASSWORD: Contraseña para la conexión a PostgreSQL.
+
+- POSTGRES_DB: Nombre de la base de datos del Data Warehouse.
+
+- POSTGRES_HOST: Host de conexión (el nombre del contenedor en la red de Docker).
+
+- POSTHRES_PORT: Puerto de la conexión con la base de datos PostgreSQL (5432 por defecto).
+```
+
+### Particionamiento en PostgreSQL
+
+### Respuestas a preguntas de negocios
+
+Se incluye el archivo `data_analysis.ipynb` con las queries utilizadas para la capa gold con las respuestas y breves explicaciones a las preguntas de negocio solicitadas.
+
+### Troubleshooting
+
+### Checklist de aceptación
 
 - [x] Docker Compose levanta Postgres + Mage
 - [x] Credenciales en Mage Secrets y .env (solo .env.example en repo)
