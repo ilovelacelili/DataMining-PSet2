@@ -1,45 +1,67 @@
-{{ config(
-    materialized='incremental',
-    incremental_strategy='append'
-) }}
+{{
+    config(
+        materialized='incremental',
+        incremental_strategy='append'
+    )
+}}
 
-WITH silver_trips AS (
+WITH source_data AS (
+    -- Read from the cleaned Silver view
     SELECT * FROM {{ ref('int_taxi_trips_zones') }}
+),
+
+deduplicated_data AS (
+    -- Assign a row number of 1 to the first instance of a trip.
+    -- If an exact duplicate exists, it gets row number 2, 3, etc.
+    SELECT 
+        *,
+        ROW_NUMBER() OVER(
+            PARTITION BY 
+                vendor_id, 
+                pickup_ts, 
+                dropoff_ts, 
+                pickup_location_id, 
+                dropoff_location_id 
+            ORDER BY ingest_ts DESC -- Keeps the most recently ingested version
+        ) as row_num
+    FROM source_data
 )
 
 SELECT 
-    -- Unique trip key
-    md5(pickup_ts::text || pickup_location_id::text || dropoff_location_id::text || service_type) AS trip_key,
-    
-    -- Partition Key (by RANGE)
+    -- Generate a unique hash based on the exact same columns
+    {{ dbt_utils.generate_surrogate_key([
+        'vendor_id', 
+        'pickup_ts', 
+        'dropoff_ts', 
+        'pickup_location_id', 
+        'dropoff_location_id'
+    ]) }} AS trip_key,
+
+    pickup_location_id AS pu_zone_key,
+    dropoff_location_id AS do_zone_key,
+
+    -- Partition Key
     DATE(pickup_ts) AS pickup_date_key,
 
-    -- Zone Keys
-    pickup_location_id as pu_zone_key,
-    dropoff_location_id as do_zone_key,
     pickup_ts,
     dropoff_ts,
-    
-    -- Categorical data
-    CASE 
-        WHEN service_type = 'yellow' THEN 1
-        WHEN service_type = 'green' THEN 2 
-    END as service_type_key,
 
-    COALESCE(payment_type_id, 5) as payment_type_key, -- 5 means Unknown in the Docs
-    
-    -- Metrics
+    -- Foreign Keys to dimensions
+    CASE
+        WHEN service_type = 'yellow' THEN 1
+        WHEN service_type = 'green' THEN 2
+    END as service_type_key,
+    payment_type_id AS payment_type_key,
+
+    -- Measures
     fare_amount,
     tip_amount,
     total_amount,
     trip_distance,
 
     -- Metadata
-    ingest_ts, 
+    ingest_ts,
     source_month
 
-FROM silver_trips 
--- Only process new data on future pipeline runs
-{% if is_incremental() %}
-    WHERE ingest_ts > (SELECT COALESCE(MAX(ingest_ts), '1900-01-01'::TIMESTAMP) FROM {{ this }})
-{% endif %}
+FROM deduplicated_data
+WHERE row_num = 1

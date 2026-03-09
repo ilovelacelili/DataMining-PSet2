@@ -162,7 +162,7 @@ MAGEAI_PORT={{MAGEAI_PORT}}
 
 Existen esencialmente 2 flujos de datos en los pipelines de MageAI:
 
-El primer flujo es para la ingesta de datos históricos, la cuál empieza y termina con el pipeline de `backfill` el cual utiliza el mismo `ingest_bronze` con triggers definidos en base a distintas fechas de ejecución y el de `ingest_zones`, ya que se utilizaron para hacer backfills de único uso para datos históricos desde Enero-2022 hasta Diciembre-2025, y se guardan en una capa **raw** a parte de la estructura de medallones. Estos pipelines se encargan de descargar los archivos `.parquet` desde la página oficial y guardarlos tal cual fueron descargados en una tabla sin ninguna estructura explícita. Además, se incluía en las tablas los metadaos de `ingest_ts` y `source_month`.
+El primer flujo es para la ingesta de datos históricos, la cuál empieza y termina con el pipeline de `backfill` el cual utiliza el mismo `ingest_bronze` con triggers definidos en base a distintas fechas de ejecución y el de `ingest_zones`, ya que se utilizaron para hacer backfills de único uso para datos históricos desde Enero-2022 hasta Diciembre-2025, y se guardan en una capa **raw** a parte de la estructura de medallones. Estos pipelines se encargan de descargar los archivos `.parquet` desde la página oficial y guardarlos tal cual fueron descargados en una tabla sin ninguna estructura explícita. Además, se incluía en las tablas los metadaos de `ingest_ts` y `source_month`. Este pipeline funciona de forma idempotente tanto para el backfill como para el de ingestión a bronce, eliminando los datos de la tabla mediante el campo `ingest_ts`.
 
 El segundo flujo, en este caso el más importante, consta de 3 pipelines distinguidas:
 
@@ -176,9 +176,12 @@ El segundo flujo, en este caso el más importante, consta de 3 pipelines disting
 
 Para este caso se utilizó 2 tipos distintos de triggers:
 
-1. `ingest_monthly` (Schedule): se ejecuta los domingos a las 2 AM y dispara el pipeline `ingest_bronze` para intentar ingestar el último mes faltante. Se encuentra configurado para tomar el mes actual de ejecución del trigger como mes de ingesta.
+1. `ingest_monthly` (Schedule): se ejecuta semanalmente desde el día de activación, pero se desearía configurar para los domingos a las 2 AM específicamente, y dispara el pipeline `ingest_bronze` para intentar ingestar el último mes faltante. Se encuentra configurado para tomar el mes actual de ejecución del trigger como mes de ingesta.
 
 ![Ingest_monthly](evidence/bronze_triggers.png)
+
+![monthly_logs](evidence/build_bronze_logs.png)
+
 
 2. `dbt_after_ingest` (Trigger Pipeline): se activa automáticamente como bloque al final de `ingest_bronze` cuando este pipeline finaliza con éxito. Dispara en cadena el pipeline `dbt_build_silver`. Importante mencionar que este último se ejecuta como parte del modelo dbt de cada uno de los bloques a forma de `schema.yml`.
 
@@ -203,6 +206,8 @@ Siguiendo buenas prácticas de seguridad, ninguna credencial importante se encue
 
 - POSTHRES_PORT: Puerto de la conexión con la base de datos PostgreSQL (5432 por defecto).
 ```
+
+![Mage Secrets list](evidence/mage_secrets.png)
 
 ### Particionamiento en PostgreSQL
 
@@ -245,7 +250,12 @@ En ambos casos, nos dirigimos a observar la línea que empieza por **Seq Scan...
 
 ### Transformaciones DBT
 
-En cada pipeline `dbt`, se ejecutan comandos de `dbt run` y `dbt test`, tal que permita materializar las tablas (vistas en caso de silver) y se ejecuten las pruebas de calidad mínimas para cada uno de los casos.
+En cada pipeline `dbt`, se ejecutan comandos de `dbt run` y `dbt test`, tal que permita materializar las tablas (vistas en caso de silver) y se ejecuten las pruebas de calidad mínimas para cada uno de los casos. Para el caso de Gold, se ejecuta un DDL para creación y particionamiento de las tablas, el modelo de construcción y población de dichas tablas con `dbt run` y luego las `quality_checks` con `dbt test`.
+
+![trigger_after_silver logs](evidence/trigger_after_silver.png)
+
+
+![quality_checks logs](evidence/quality_checks.png)
 
 ### Respuestas a preguntas de negocios
 

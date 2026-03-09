@@ -17,12 +17,12 @@ blocks:
   language: sql
   name: create_table_partitions
   retry_config: null
-  status: updated
+  status: executed
   timeout: null
   type: data_exporter
   upstream_blocks: []
   uuid: create_table_partitions
-- all_upstream_blocks_executed: false
+- all_upstream_blocks_executed: true
   color: null
   configuration:
     data_provider: postgres
@@ -44,7 +44,7 @@ blocks:
   language: yaml
   name: dbt_build_gold
   retry_config: null
-  status: updated
+  status: failed
   timeout: null
   type: dbt
   upstream_blocks:
